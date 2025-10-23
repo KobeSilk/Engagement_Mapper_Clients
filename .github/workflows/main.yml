@@ -1,4 +1,4 @@
-xname: Run match.py for all clients
+name: Run match.py for all clients
 
 on:
   schedule:
