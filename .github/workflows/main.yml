@@ -37,7 +37,7 @@ jobs:
           COMPANY_NAME:       ${{ secrets.COMPANY_NAME }}
         run: |
           mkdir -p exports
-          python match.py
+          python scripts/match.py
 
       - name: Upload CSV artifact (optional)
         uses: actions/upload-artifact@v4
