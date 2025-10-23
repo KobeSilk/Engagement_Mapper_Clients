@@ -1,0 +1,47 @@
+name: Run match.py for all clients
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        client: [Jonas]   # add/remove clients here
+    environment: ${{ matrix.client }}  # pulls that environment’s secrets
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run match.py for this client
+        env:
+          BASEROW_TOKEN:      ${{ secrets.BASEROW_TOKEN }}
+          BASEROW_TABLE_ID:   ${{ secrets.BASEROW_TABLE_ID }}
+          PHANTOM_API_KEY:    ${{ secrets.PHANTOM_API_KEY }}
+          SCRAPING_COMPANY:   ${{ secrets.SCRAPING_COMPANY }}
+          SCRAPING_PERSONAL:  ${{ secrets.SCRAPING_PERSONAL }}
+          COMBINED_LIST_ID:   ${{ secrets.COMBINED_LIST_ID }}
+          PERSON_NAME:        ${{ secrets.PERSON_NAME }}
+          COMPANY_NAME:       ${{ secrets.COMPANY_NAME }}
+        run: |
+          mkdir -p exports
+          python match.py
+
+      - name: Upload CSV artifact (optional)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.client }}-exports
+          path: exports/**
+          if-no-files-found: ignore
