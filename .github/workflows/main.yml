@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        client: [Jonas]   # add/remove clients here
+        client: [Jonas,Karen]   # add/remove clients here
     environment: ${{ matrix.client }}  # pulls that environment’s secrets
 
     steps:
