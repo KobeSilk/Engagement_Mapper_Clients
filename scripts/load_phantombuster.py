@@ -5,6 +5,7 @@ import re
 from datetime import datetime
 import numpy as np
 from dotenv import load_dotenv
+from urllib.parse import unquote
 
 env_path = '.env'
 load_dotenv(env_path)
@@ -62,6 +63,7 @@ LI_leads["last_engagement"] = LI_leads["editionsHistory"].apply(
 
 LI_leads["companyID"] = LI_leads["linkedinCompanyId"]
 LI_leads = LI_leads[["linkedinProfileSlug","linkedinJobTitle","companyName","first_engagement","last_engagement","companyID"]]
+LI_leads["linkedinProfileSlug"] = LI_leads["linkedinProfileSlug"].apply(unquote) #Decode accents and emoji's
 
 #Get phantom results from comments
 company_comments = load_phantom_results(company_scraping_id)
@@ -73,6 +75,7 @@ personal_comments["Source"] = personal_name
 #Merge both comment and likes
 comments_concat = pd.concat([company_comments, personal_comments], ignore_index=True)
 comments_concat["linkedin_identifier"] = comments_concat["profileUrl"].apply(extract_rightmost_part)
+comments_concat["linkedin_identifier"] = comments_concat["linkedin_identifier"].apply(unquote) #Decode accents and emoji's
 comments_concat = pd.merge(left=comments_concat,right=LI_leads,left_on="linkedin_identifier",right_on="linkedinProfileSlug",how="left")
 
 URN_RX = re.compile(r"urn:li:(?:ugcPost|activity):\d+")
@@ -136,4 +139,5 @@ def all_posts_list():
     return grouped_engagements
 
 if __name__ == "__main__":
+
     pb_scraping = all_posts_list()
