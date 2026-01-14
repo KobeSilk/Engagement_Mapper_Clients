@@ -1,5 +1,6 @@
 pandas
 requests
 python-dotenv
-unquote
+urllib.parse
 numpy
+
