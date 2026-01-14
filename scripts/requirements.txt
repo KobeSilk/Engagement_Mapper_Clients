@@ -1,6 +1,6 @@
 pandas
 requests
 python-dotenv
-urllib.parse
 numpy
+
 
