@@ -140,7 +140,9 @@ df = merge_LI_messages
 #df = df.drop(df.columns[0],axis =1)
 df.fillna("", inplace=True)  # Replace NaN with empty strings for safer baserow upser
 df = df.replace("",None)  # Replace NaN with empty strings for safer baserow upser
+df = df.where(pd.notna(df), None)
 # df should contain at least the 'linkedin_identifier' column plus whatever you want to write.
 upsert_by_linkedin_identifier(df, TABLE_ID)
+
 
 
