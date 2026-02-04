@@ -74,6 +74,10 @@ def batch_create(table_id: int, items: list):
         return
     url = f"{BASEROW_API}/database/rows/table/{table_id}/batch/?user_field_names=true"
     r = requests.post(url, headers=HEADERS, data=json.dumps({"items": items}))
+    if not r.ok:
+        print("Baserow status:", r.status_code)
+        print("Baserow error body:", r.text)  # or r.json()
+
     r.raise_for_status()
 
 def batch_update(table_id: int, items_with_id: list):
@@ -81,6 +85,10 @@ def batch_update(table_id: int, items_with_id: list):
         return
     url = f"{BASEROW_API}/database/rows/table/{table_id}/batch/?user_field_names=true"
     r = requests.patch(url, headers=HEADERS, data=json.dumps({"items": items_with_id}))
+    if not r.ok:
+        print("Baserow status:", r.status_code)
+        print("Baserow error body:", r.text)  # or r.json()
+
     r.raise_for_status()
 
 def upsert_by_linkedin_identifier(
@@ -134,4 +142,5 @@ df.fillna("", inplace=True)  # Replace NaN with empty strings for safer baserow 
 df = df.replace("",None)  # Replace NaN with empty strings for safer baserow upser
 # df should contain at least the 'linkedin_identifier' column plus whatever you want to write.
 upsert_by_linkedin_identifier(df, TABLE_ID)
+
 
