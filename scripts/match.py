@@ -7,6 +7,7 @@ import json
 import os
 from dotenv import load_dotenv
 import numpy as np
+import math
 
 def find_nan_path(obj, path="root"):
     if isinstance(obj, np.generic):
@@ -193,6 +194,7 @@ df = df.replace("", None)
 
 # df should contain at least the 'linkedin_identifier' column plus whatever you want to write.
 upsert_by_linkedin_identifier(df, TABLE_ID)
+
 
 
 
