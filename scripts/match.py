@@ -9,6 +9,35 @@ from dotenv import load_dotenv
 import numpy as np
 import math
 
+def make_json_safe(value):
+    # explicit nulls
+    if value is None or value is pd.NA:
+        return None
+    # numpy scalars -> python scalars
+    if isinstance(value, np.generic):
+        value = value.item()
+    # catch pandas/numpy missing values before anything else
+    try:
+        if pd.isna(value) and not isinstance(value, (list, dict, tuple, set)):
+            return None
+    except Exception:
+        pass
+    # floats
+    if isinstance(value, float):
+        if math.isnan(value) or math.isinf(value):
+            return None
+        return value
+    # dicts
+    if isinstance(value, dict):
+        return {k: make_json_safe(v) for k, v in value.items()}
+    # lists/tuples/sets
+    if isinstance(value, (list, tuple, set)):
+        return [make_json_safe(v) for v in value]
+    return value
+
+def ensure_valid_json(payload):
+    json.dumps(payload, allow_nan=False)
+
 def find_nan_path(obj, path="root"):
     if isinstance(obj, np.generic):
         obj = obj.item()
@@ -117,24 +146,21 @@ def batch_create(table_id: int, items: list):
 def batch_update(table_id: int, items_with_id: list):
     if not items_with_id:
         return
-    bad = find_nan_path(items_with_id)
-    if bad:
-        raise ValueError(f"Invalid JSON value found: {bad}")
+
+    safe_items = [make_json_safe(item) for item in items_with_id]
+    payload = {"items": safe_items}
+
+    ensure_valid_json(payload)
+
     url = f"{BASEROW_API}/database/rows/table/{table_id}/batch/?user_field_names=true"
-    try:
-        r = requests.patch(url, headers=HEADERS, data=json.dumps({"items": items_with_id}))
-        r.raise_for_status()
-    except requests.exceptions.HTTPError as e:
-        try:
-            error_details = r.json()
-        except ValueError:
-            error_details = r.text  # fallback to raw text if not JSON
+    r = requests.patch(url, headers=HEADERS, json=payload)
 
-        # Print or raise a more descriptive message
-        raise requests.exceptions.HTTPError(
-            f"HTTP error {r.status_code} for {r.url}:\n{json.dumps(error_details, indent=2)}"
-        ) from e
+    if not r.ok:
+        print("Baserow status:", r.status_code)
+        print("Baserow error body:", r.text)
 
+    r.raise_for_status()
+    
 def upsert_by_linkedin_identifier(
     df: pd.DataFrame,
     table_id: int,
@@ -158,20 +184,25 @@ def upsert_by_linkedin_identifier(
 
     # 2) Convert DF to records (dicts)
     records = df.to_dict(orient="records")
-
+    
     # 3) Split into updates vs creates
     creates, updates = [], []
+    
     for rec in records:
         key = rec.get(key_field)
+    
+        # sanitize every value before sending to Baserow
+        payload = {
+            k: make_json_safe(v)
+            for k, v in rec.items()
+            if k not in protect_fields
+        }
+    
         if key in index:
             rid = index[key]
-            # Only include fields you want to update (skip protected)
-            payload = {k: v for k, v in rec.items() if k not in protect_fields}
-            payload["id"] = rid                     # required for PATCH
+            payload["id"] = rid
             updates.append(payload)
         else:
-            # For creates, ensure the key is included; omit protected fields to start clean
-            payload = {k: v for k, v in rec.items() if k not in protect_fields}
             creates.append(payload)
 
     # 4) Batch write (chunk to be safe)
@@ -194,6 +225,7 @@ df = df.replace("", None)
 
 # df should contain at least the 'linkedin_identifier' column plus whatever you want to write.
 upsert_by_linkedin_identifier(df, TABLE_ID)
+
 
 
 
