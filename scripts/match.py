@@ -6,6 +6,7 @@ import requests
 import json
 import os
 from dotenv import load_dotenv
+import numpy as np
 
 env_path = '.env'
 load_dotenv(env_path)
@@ -136,13 +137,21 @@ def upsert_by_linkedin_identifier(
     for i in range(0, len(creates), batch_size):
         batch_create(table_id, creates[i:i+batch_size])
 
-df = merge_LI_messages
-#df = df.drop(df.columns[0],axis =1)
-df.fillna("", inplace=True)  # Replace NaN with empty strings for safer baserow upser
-df = df.replace("",None)  # Replace NaN with empty strings for safer baserow upser
+df = merge_LI_messages.copy()
+
+# Replace infinities first
+df = df.replace([np.inf, -np.inf], None)
+
+# Replace NaN/NA with None
 df = df.where(pd.notna(df), None)
+
+# Optional: convert empty strings back to None
+df = df.replace("", None)
+
+
 # df should contain at least the 'linkedin_identifier' column plus whatever you want to write.
 upsert_by_linkedin_identifier(df, TABLE_ID)
+
 
 
 
