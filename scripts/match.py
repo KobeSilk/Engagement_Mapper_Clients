@@ -74,23 +74,38 @@ def batch_create(table_id: int, items: list):
     if not items:
         return
     url = f"{BASEROW_API}/database/rows/table/{table_id}/batch/?user_field_names=true"
-    r = requests.post(url, headers=HEADERS, json={"items": items})
-    if not r.ok:
-        print("Baserow status:", r.status_code)
-        print("Baserow error body:", r.text)  # or r.json()
+    try:
+        r = requests.post(url, headers=HEADERS, data=json.dumps({"items": items}))
+        r.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        # Try to extract the response body for more details
+        try:
+            error_details = r.json()
+        except ValueError:
+            error_details = r.text  # fallback to raw text if not JSON
 
-    r.raise_for_status()
-
+        # Print or raise a more descriptive message
+        raise requests.exceptions.HTTPError(
+            f"HTTP error {r.status_code} for {r.url}:\n{json.dumps(error_details, indent=2)}"
+        ) from e
+        
 def batch_update(table_id: int, items_with_id: list):
     if not items_with_id:
         return
     url = f"{BASEROW_API}/database/rows/table/{table_id}/batch/?user_field_names=true"
-    r = requests.patch(url, headers=HEADERS, json=({"items": items_with_id}))
-    if not r.ok:
-        print("Baserow status:", r.status_code)
-        print("Baserow error body:", r.text)  # or r.json()
+    try:
+        r = requests.patch(url, headers=HEADERS, data=json.dumps({"items": items_with_id}))
+        r.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        try:
+            error_details = r.json()
+        except ValueError:
+            error_details = r.text  # fallback to raw text if not JSON
 
-    r.raise_for_status()
+        # Print or raise a more descriptive message
+        raise requests.exceptions.HTTPError(
+            f"HTTP error {r.status_code} for {r.url}:\n{json.dumps(error_details, indent=2)}"
+        ) from e
 
 def upsert_by_linkedin_identifier(
     df: pd.DataFrame,
@@ -151,6 +166,7 @@ df = df.replace("", None)
 
 # df should contain at least the 'linkedin_identifier' column plus whatever you want to write.
 upsert_by_linkedin_identifier(df, TABLE_ID)
+
 
 
 
