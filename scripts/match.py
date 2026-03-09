@@ -8,6 +8,30 @@ import os
 from dotenv import load_dotenv
 import numpy as np
 
+def find_nan_path(obj, path="root"):
+    if isinstance(obj, np.generic):
+        obj = obj.item()
+
+    if isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
+        return f"{path} = {obj}"
+
+    if obj is pd.NA:
+        return f"{path} = pd.NA"
+
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            bad = find_nan_path(v, f"{path}.{k}")
+            if bad:
+                return bad
+
+    if isinstance(obj, (list, tuple, set)):
+        for i, v in enumerate(obj):
+            bad = find_nan_path(v, f"{path}[{i}]")
+            if bad:
+                return bad
+
+    return None
+    
 env_path = '.env'
 load_dotenv(env_path)
 
@@ -92,6 +116,9 @@ def batch_create(table_id: int, items: list):
 def batch_update(table_id: int, items_with_id: list):
     if not items_with_id:
         return
+    bad = find_nan_path(items_with_id)
+    if bad:
+        raise ValueError(f"Invalid JSON value found: {bad}")
     url = f"{BASEROW_API}/database/rows/table/{table_id}/batch/?user_field_names=true"
     try:
         r = requests.patch(url, headers=HEADERS, data=json.dumps({"items": items_with_id}))
@@ -166,6 +193,7 @@ df = df.replace("", None)
 
 # df should contain at least the 'linkedin_identifier' column plus whatever you want to write.
 upsert_by_linkedin_identifier(df, TABLE_ID)
+
 
 
 
